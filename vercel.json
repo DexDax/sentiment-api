@@ -5,19 +5,17 @@
       "src": "app.py",
       "use": "@vercel/python",
       "config": {
-        "maxLambdaSize": "50mb"
+        "maxDuration": 15
       }
     }
   ],
+  "env": {
+    "PYTHON_VERSION": "3.9"
+  },
   "routes": [
     {
       "src": "/(.*)",
       "dest": "/app.py"
     }
-  ],
-  "env": {
-    "RUSTUP_HOME": "/opt/rust",
-    "CARGO_HOME": "/opt/cargo",
-    "PYTHON_VERSION": "3.9"
-  }
+  ]
 }
