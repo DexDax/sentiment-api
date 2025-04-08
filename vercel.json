@@ -17,6 +17,7 @@
   ],
   "env": {
     "RUSTUP_HOME": "/opt/rust",
-    "CARGO_HOME": "/opt/cargo"
+    "CARGO_HOME": "/opt/cargo",
+    "PYTHON_VERSION": "3.9"
   }
 }
