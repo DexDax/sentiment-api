@@ -1,32 +1,38 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-from transformers import BertForSequenceClassification, BertTokenizer
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
+import torch.nn.functional as F
 import logging
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Define the model path
-MODEL_PATH = "./bert_sentiment_new_dataset_final"
-
-# Load model and tokenizer
-model = BertForSequenceClassification.from_pretrained(MODEL_PATH, num_labels=3)
-tokenizer = BertTokenizer.from_pretrained(MODEL_PATH)
-
-# Set model to evaluation mode
-model.eval()
-
-# Define API
+# Initialize FastAPI app
 app = FastAPI()
 
+# Load model and tokenizer
+model_name = "dex0dax/odoo_sentiment_analysis_bert"
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForSequenceClassification.from_pretrained(model_name)
+
+# Label mapping (adjust if needed based on your training)
+id2label = {
+    0: "Negative",
+    1: "Neutral",
+    2: "Positive"
+}
+
+# Define input data structure
 class InputText(BaseModel):
     text: str
 
+# API endpoint to predict sentiment
 @app.post("/predict")
 def predict_sentiment(input_data: InputText):
-    print(f"Received input: {input_data.text}")  # Test if this shows up in Docker logs
+    # Log the received input
+    logger.info(f"Received input text: {input_data.text}")
     
     # Tokenize input text
     inputs = tokenizer(input_data.text, return_tensors="pt", truncation=True, padding=True, max_length=512)
@@ -39,14 +45,16 @@ def predict_sentiment(input_data: InputText):
         predictions = torch.argmax(probabilities, dim=1).item()  # Get predicted class
     
     # Convert prediction to sentiment
-    sentiment = "Positive" if predictions == 2 else "Neutral" if predictions == 1 else "Negative"
+    sentiment = id2label[predictions]
     
     # Convert probabilities to percentage and round to 2 decimal places
     probabilities = probabilities.squeeze().tolist()  # Convert to list
     probabilities = [round(prob * 100, 2) for prob in probabilities]  # Convert to percentage
-    
-    print(f"Sentiment: {sentiment}, Probabilities: {probabilities}")  # Log output
-    
+
+    # Log the prediction and probabilities
+    logger.info(f"Sentiment prediction: {sentiment}")
+    logger.info(f"Probabilities: {probabilities}")
+
     return {
         "sentiment": sentiment,
         "probabilities": {
@@ -55,3 +63,5 @@ def predict_sentiment(input_data: InputText):
             "Positive": probabilities[2]
         }
     }
+
+# To run this app, use: uvicorn app:app --reload
