@@ -1,5 +1,4 @@
 fastapi
 uvicorn
 transformers==4.30.0
-tokenizers==0.13.3 
-pydantic==2.11.2
+
