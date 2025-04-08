@@ -1,8 +1,6 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
-import torch
-import torch.nn.functional as F
+from transformers import pipeline
 import logging
 
 # Set up logging
@@ -12,17 +10,9 @@ logger = logging.getLogger(__name__)
 # Initialize FastAPI app
 app = FastAPI()
 
-# Load model and tokenizer
+# Load sentiment analysis pipeline
 model_name = "dex0dax/odoo_sentiment_analysis_bert"
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForSequenceClassification.from_pretrained(model_name)
-
-# Label mapping (adjust if needed based on your training)
-id2label = {
-    0: "Negative",
-    1: "Neutral",
-    2: "Positive"
-}
+sentiment_analysis = pipeline("sentiment-analysis", model=model_name)
 
 # Define input data structure
 class InputText(BaseModel):
@@ -34,34 +24,29 @@ def predict_sentiment(input_data: InputText):
     # Log the received input
     logger.info(f"Received input text: {input_data.text}")
     
-    # Tokenize input text
-    inputs = tokenizer(input_data.text, return_tensors="pt", truncation=True, padding=True, max_length=512)
+    # Get the prediction using the pipeline
+    result = sentiment_analysis(input_data.text)
     
-    # Run inference
-    with torch.no_grad():
-        outputs = model(**inputs)
-        logits = outputs.logits  # Get raw outputs
-        probabilities = torch.softmax(logits, dim=1)  # Convert logits to probabilities
-        predictions = torch.argmax(probabilities, dim=1).item()  # Get predicted class
-    
-    # Convert prediction to sentiment
-    sentiment = id2label[predictions]
-    
-    # Convert probabilities to percentage and round to 2 decimal places
-    probabilities = probabilities.squeeze().tolist()  # Convert to list
-    probabilities = [round(prob * 100, 2) for prob in probabilities]  # Convert to percentage
+    # Log the prediction
+    logger.info(f"Prediction result: {result}")
 
-    # Log the prediction and probabilities
+    # Extract sentiment and probabilities
+    sentiment = result[0]['label']
+    probability = result[0]['score'] * 100  # Convert to percentage
+    
+    # Log the sentiment and probability
     logger.info(f"Sentiment prediction: {sentiment}")
-    logger.info(f"Probabilities: {probabilities}")
+    logger.info(f"Probability: {probability:.2f}%")
 
-    return {
-        "sentiment": sentiment,
-        "probabilities": {
-            "Negative": probabilities[0],
-            "Neutral": probabilities[1],
-            "Positive": probabilities[2]
-        }
+    # Map sentiment label to your custom labels (if needed)
+    sentiment_map = {
+        "LABEL_0": "Negative",  # Adjust this according to your model's label mapping
+        "LABEL_1": "Neutral",   # Adjust this according to your model's label mapping
+        "LABEL_2": "Positive"   # Adjust this according to your model's label mapping
     }
 
-# To run this app, use: uvicorn app:app --reload
+    # Return the response
+    return {
+        "sentiment": sentiment_map.get(sentiment, sentiment),  # Custom label mapping if needed
+        "probability": round(probability, 2)
+    }
