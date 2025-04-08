@@ -1,21 +1,14 @@
 {
-  "version": 2,
   "builds": [
     {
-      "src": "app.py",
-      "use": "@vercel/python",
-      "config": {
-        "maxDuration": 15
-      }
+      "src": "Dockerfile",
+      "use": "@vercel/docker"
     }
   ],
-  "env": {
-    "PYTHON_VERSION": "3.9"
-  },
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "/app.py"
+      "dest": "/app/main.py"
     }
   ]
 }
